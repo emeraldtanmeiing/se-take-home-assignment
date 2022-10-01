@@ -1,19 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useReducer, useRef } from "react";
 import { isEmpty } from "lodash";
 import { useInterval } from "./useInterval.js";
 
 function App() {
   const [pending, setPending] = useState([]);
-  const nextOrder = useRef({});
   const [complete, setComplete] = useState([]);
   const [orderNo, setOrderNo] = useState(1);
 
   const [bots, setBots] = useState([]);
   const [botNo, setBotNo] = useState(1);
-
-  useEffect(()=>{
-    nextOrder.current = pending[0]
-  }, [pending])
 
   const sortOrders = (orders) => {
     orders.sort((a, b) => {
@@ -45,23 +40,20 @@ function App() {
     });
   };
 
-  const getNextOrder = () => {
-    return nextOrder.current;
-  };
-
   const completeOrder = (order) => {
     setComplete((prevComplete) => [...prevComplete, order]);
   };
 
-  const assignOrder = (bot, order) => {
-    setPending((prevPending) =>
-      [...prevPending].filter((i) => i.orderNo != order.orderNo)
-    );
+  const assignOrder = (bot) => {
+    const nextOrder = pending[0];
     bot.currentOrder = {
-      ...order,
+      ...nextOrder,
       timeLeft: 10,
     };
     updateBot(bot);
+    setPending((prevPending) =>
+      [...prevPending].filter((i) => i.orderNo != nextOrder.orderNo)
+    );
   };
 
   const addBot = () => {
@@ -82,28 +74,26 @@ function App() {
 
   useInterval(() => {
     bots.forEach((bot) => {
-      setTimeout(() => {
-        //if bot has no order
-        if (isEmpty(bot.currentOrder)) {
-          if (!isEmpty(getNextOrder())) {
-            //assign order & update pending
-            let order = getNextOrder();
-            assignOrder(bot, order);
-          }
-        } else {
-          //if bot has order
-          if (bot.currentOrder.timeLeft > 0) {
-            bot.currentOrder.timeLeft = bot.currentOrder.timeLeft - 1;
-            updateBot(bot);
-          } else {
-            //complete order
-            const completedOrder = bot.currentOrder;
-            completeOrder(completedOrder);
-            bot.currentOrder = null;
-            updateBot(bot);
-          }
+      //if bot has no order
+      if (isEmpty(bot.currentOrder)) {
+        let latestOrder = pending[0];
+        if (!isEmpty(latestOrder)) {
+          //assign order & update pending
+          assignOrder(bot);
         }
-      }, bot.botNo * 5);
+      } else {
+        //if bot has order
+        if (bot.currentOrder.timeLeft > 0) {
+          bot.currentOrder.timeLeft = bot.currentOrder.timeLeft - 1;
+          updateBot(bot);
+        } else {
+          //complete order
+          const completedOrder = bot.currentOrder;
+          completeOrder(completedOrder);
+          bot.currentOrder = null;
+          updateBot(bot);
+        }
+      }
     });
   }, 1000);
 
