@@ -103,7 +103,7 @@ function App() {
             updateBot(bot);
           }
         }
-      }, bot.botNo * 5);
+      }, bot.botNo * 10);
     });
   }, 1000);
 
